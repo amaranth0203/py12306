@@ -513,18 +513,31 @@ class MyOrder(object):
     def getCaptcha(self, url):
         self.updateHeaders(url)
         r = self.session.get(url, verify=False, stream=True, timeout=16)
-        with open('captcha.gif', 'wb') as fd:
+        with open('captcha.jpg', 'wb') as fd:
             for chunk in r.iter_content():
                 fd.write(chunk)
-        print(u'请输入4位图片验证码(回车刷新验证码):')
-        captcha = raw_input()
-        if len(captcha) == 4:
-            return captcha
-        elif len(captcha) != 0:
-            print(u'%s是无效的图片验证码, 必须是4位' % (captcha))
-            return None
-        else:
-            return 1  # 刷新
+        coor = raw_input( 'coor?' )
+        args = [ int( i ) for i in coor.split( ) ]
+        coor = {
+            1 : "40,44" ,
+            2 : "110,44" ,
+            3 : "180,44" , 
+            4 : "250,44" ,
+            5 : "40,120" ,
+            6 : "110,120" ,
+            7 : "180,120" , 
+            8 : "250,120" ,
+        }
+        return ",".join( [ coor[i] for i in args ] )
+        # print(u'请输入4位图片验证码(回车刷新验证码):')
+        # captcha = raw_input()
+        # if len(captcha) == 4:
+            # return captcha
+        # elif len(captcha) != 0:
+            # print(u'%s是无效的图片验证码, 必须是4位' % (captcha))
+            # return None
+        # else:
+            # return 1  # 刷新
 
     def initStation(self):
         url = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
@@ -868,7 +881,7 @@ class MyOrder(object):
         if not r:
             print(u'查询车票异常')
 
-        url = 'https://kyfw.12306.cn/otn/leftTicket/queryT?'
+        url = 'https://kyfw.12306.cn/otn/leftTicket/query?'
         parameters = [
             ('leftTicketDTO.train_date', self.train_date),
             ('leftTicketDTO.from_station', self.from_station_telecode),
@@ -886,6 +899,7 @@ class MyOrder(object):
             return RET_OK
         else:
             print(u'查询车票失败')
+            print url
             if hasKeys(obj, ['messages']):
                 dumpObj(obj['messages'])
             return RET_ERR
@@ -1093,6 +1107,7 @@ class MyOrder(object):
                 index = selectTrain(self.trains)
             if self.trains[index - 1]['queryLeftNewDTO']['canWebBuy'] != 'Y':
                 print(u'您选择的车次%s没票啦,请重新选择车次' % (self.trains[index - 1]['queryLeftNewDTO']['station_train_code']))
+                return -1
                 index = selectTrain(self.trains)
             ret = index
             self.current_train_index = index - 1
@@ -1174,6 +1189,7 @@ class MyOrder(object):
             if i < (length - 1):
                 payload += '&'
         r = self.post(url, payload)
+        print r
         if not r:
             print(u'下单异常')
             return RET_ERR
@@ -1197,18 +1213,21 @@ class MyOrder(object):
             print(u'订单初始化异常')
             return RET_ERR
         data = r.text
+        print data
         s = data.find('globalRepeatSubmitToken')  # TODO
         e = data.find('global_lang')
         if s == -1 or e == -1:
             print(u'找不到 globalRepeatSubmitToken')
             return RET_ERR
         buf = data[s:e]
+        print buf
         s = buf.find("'")
         e = buf.find("';")
         if s == -1 or e == -1:
             print(u'很遗憾, 找不到 globalRepeatSubmitToken')
             return RET_ERR
         self.repeatSubmitToken = buf[s + 1:e]
+        print buf[s + 1:e]
 
         s = data.find('key_check_isChange')
         e = data.find('leftDetails')
@@ -1513,9 +1532,11 @@ def main():
         # 订单初始化
         if order.initOrder() != RET_OK:
             continue
+        print 'b'
         # 检查订单信息
         if order.checkOrderInfo() != RET_OK:
             continue
+        print 'c'
         # 查询排队和余票情况
         # if order.getQueueCount() != RET_OK:
         #  continue
@@ -1525,12 +1546,14 @@ def main():
             tries += 1
             if order.confirmSingleForQueue() == RET_OK:
                 break
+        print 'd'
         # 获取orderId
         tries = 0
         while tries < 2:
             tries += 1
             if order.queryOrderWaitTime() == RET_OK:
                 break
+        print 'e'
         # 正式提交订单
         if order.payOrder() == RET_OK:
             break
